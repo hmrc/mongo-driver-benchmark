@@ -11,8 +11,6 @@ trait RangeBenchmark extends TimeAndMemoryBenchmarks {
     size <- sizes
   } yield 0 until size
 
-  /* tests */
-
   performance of "Range" in {
     measure method "map" in {
       using(ranges) in { r =>

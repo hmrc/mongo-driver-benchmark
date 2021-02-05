@@ -7,14 +7,18 @@ import org.scalameter.{Bench, Executor, Measurer, Persistor}
 
 trait TimeAndMemoryBenchmarks extends Bench[(Double, Double)] {
 
-  import org.scalameter.picklers.Implicits._
   import Picklers.tuplePicker
+  import org.scalameter.picklers.Implicits._
 
   lazy val executor =
     SeparateJvmsExecutor(new Executor.Warmer.Default, Aggregrators.tupleAverage, measurer)
 
+  private lazy val timeMeasurer = new Measurer.Default()
+
+  private lazy val memoryFootprintMeasurer = new MemoryFootprint
+
   lazy val measurer =
-    Measurers.composite(measurerName = "time and memory", left = Measurer.Default(), right = new MemoryFootprint)
+    Measurers.composite(measurerName = "time and memory", left = timeMeasurer, right = memoryFootprintMeasurer)
 
   lazy val reporter = LoggingReporter[(Double, Double)]()
 

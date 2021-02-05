@@ -1,24 +1,39 @@
 import Dependencies._
 
 
-lazy val basic = Project(
-    "basic",
+lazy val root = Project(
+    "root",
     file("."),
     settings = Defaults.coreDefaultSettings ++ Seq(
         name := "scalameter-examples",
-        organization := "com.storm-enroute",
-        scalaVersion := "2.11.1",
+        scalaVersion := "2.12.13",
         scalacOptions ++= Seq("-deprecation", "-unchecked", "-feature", "-Xlint"),
-        publishArtifact := false,
+        publishArtifact := false
+    )
+).aggregate(benchmarksSuite)
+
+lazy val common = Project(
+    "common",
+    file("common"),
+    settings = Defaults.coreDefaultSettings ++ Seq(
+        name := "common",
+        scalaVersion := "2.12.13",
         libraryDependencies ++= Seq(
-            "com.storm-enroute" %% "scalameter" % version.value % "test" // ScalaMeter version is set in version.sbt
-        ),
-        resolvers ++= Seq(
-            "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots",
-            "Sonatype OSS Releases" at "https://oss.sonatype.org/content/repositories/releases"
-        ),
+            scalameter
+        )
+    )
+)
+
+lazy val benchmarksSuite = Project(
+    "benchmarksSuite",
+    file("benchmarks-suite"),
+    settings = Defaults.coreDefaultSettings ++ Seq(
+        name := "benchmarks-suite",
+        scalaVersion := "2.12.13",
         testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework"),
         parallelExecution in Test := false,
         logBuffered := false
     )
-)
+).dependsOn(common)
+
+

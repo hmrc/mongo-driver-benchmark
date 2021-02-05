@@ -5,7 +5,10 @@ import org.scalameter.{Context, Measurer, Quantity}
 object Measurers {
   import bench.QuantityHelper._
 
-  def composite[L, R](measurerName: String, left: Measurer[L], right: Measurer[R]): Measurer[(L, R)] =
+  def composite[L, R](measurerName: String, left: Measurer[L], right: Measurer[R])(
+    implicit numericL: Numeric[L],
+    numericR: Numeric[R]
+  ): Measurer[(L, R)] =
     new Measurer[(L, R)] {
       override val name = measurerName
 
