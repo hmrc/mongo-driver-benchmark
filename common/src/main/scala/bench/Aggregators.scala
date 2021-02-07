@@ -2,7 +2,7 @@ package bench
 
 import org.scalameter.Aggregator
 
-object Aggregrators {
+object Aggregators {
   import bench.QuantityHelper._
 
   def tupleAggregator[T](name: String, baseAggregator: Aggregator[T]): Aggregator[(T, T)] =
