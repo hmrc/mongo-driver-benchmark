@@ -1,8 +1,3 @@
+## How to run
 
-# mongo-driver-benchmark
-
-This is a placeholder README.md for a new repository
-
-### License
-
-This code is open source software licensed under the [Apache 2.0 License]("http://www.apache.org/licenses/LICENSE-2.0.html").
+`jmhProject/jmh:run -i 1 -wi 1`
