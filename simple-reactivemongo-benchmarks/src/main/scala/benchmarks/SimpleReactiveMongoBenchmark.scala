@@ -2,7 +2,7 @@ package benchmarks
 
 import org.openjdk.jmh.annotations._
 import play.api.libs.json.Json
-import reactivemongo.ReactiveMongoHelper
+import repository.TestObject.formats
 import repository.{TestObject, TestRepository}
 import uk.gov.hmrc.mongo.MongoConnector
 
@@ -10,7 +10,6 @@ import java.util.UUID.randomUUID
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
-import TestObject.formats
 
 @State(Scope.Benchmark)
 class SimpleReactiveMongoBenchmark {
@@ -24,7 +23,7 @@ class SimpleReactiveMongoBenchmark {
 
   @Benchmark
   def insertBulk(): Unit =
-    assert(await(repo.insert(TestObject())).ok)
+    assert(await(repo.bulkInsert(Seq(TestObject(), TestObject(), TestObject()))).ok)
 
   @Benchmark
   def find(): Unit = {
@@ -115,10 +114,9 @@ class SimpleReactiveMongoBenchmark {
   @TearDown
   def tearDown: Unit = {
     Await.result(repo.removeAll(), 5.seconds)
-    Await.result(
-      mongoConnector.helper.driver.system.terminate(),
-      mongoConnector.dbTimeout.getOrElse(ReactiveMongoHelper.DEFAULT_DB_TIMEOUT)
-    )
+    mongoConnector.close()
+    mongoConnector.helper.driver.close()
+    await(mongoConnector.helper.driver.system.terminate())
   }
 
   private def await[T](f: Future[T]): T = Await.result(f, 5.seconds)

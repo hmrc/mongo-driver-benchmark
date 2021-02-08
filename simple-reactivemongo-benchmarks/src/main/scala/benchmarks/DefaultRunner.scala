@@ -1,10 +1,11 @@
 package benchmarks
 
-import org.openjdk.jmh.annotations.Mode.All
-import org.openjdk.jmh.profile.{HotspotMemoryProfiler, HotspotThreadProfiler}
+import org.openjdk.jmh.annotations.Mode
+import org.openjdk.jmh.profile.HotspotThreadProfiler
 import org.openjdk.jmh.runner.Runner
 import org.openjdk.jmh.runner.options.WarmupMode.BULK
 import org.openjdk.jmh.runner.options.{CommandLineOptions, OptionsBuilder}
+import profiler.MemoryProfiler
 
 object DefaultRunner extends App {
 
@@ -14,10 +15,10 @@ object DefaultRunner extends App {
       .forks(1)
       .threads(-1)
       .warmupMode(BULK)
-      .addProfiler(classOf[HotspotMemoryProfiler])
+      .addProfiler(classOf[MemoryProfiler])
       .addProfiler(classOf[HotspotThreadProfiler])
       .include("benchmarks.*")
-      .mode(All)
+      .mode(Mode.Throughput)
       .build()
   ).run()
 }
