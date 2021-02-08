@@ -2,20 +2,22 @@ package benchmarks
 
 import org.openjdk.jmh.annotations._
 import play.api.libs.json.Json
-import repository.TestObject.formats
 import repository.{TestObject, TestRepository}
 import uk.gov.hmrc.mongo.MongoConnector
 
 import java.util.UUID.randomUUID
-import scala.concurrent.ExecutionContext.Implicits.global
+import java.util.concurrent.Executors
 import scala.concurrent.duration._
-import scala.concurrent.{Await, Future}
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 @State(Scope.Benchmark)
 class SimpleReactiveMongoBenchmark {
 
-  var mongoConnector: MongoConnector = _
-  var repo: TestRepository           = _
+  import TestObject.formats
+
+  private var mongoConnector: MongoConnector = _
+  private var repo: TestRepository           = _
+  private implicit var ec: ExecutionContext  = _
 
   @Benchmark
   def insertSingle(): Unit =
@@ -102,21 +104,19 @@ class SimpleReactiveMongoBenchmark {
       _      <- repo.insert(testObject)
       result <- repo.removeById(testObject.id)
     } yield assert(result.ok))
-
   }
 
   @Setup
   def setUp: Unit = {
     mongoConnector = MongoConnector("mongodb://localhost:27017/benchmarks-test")
     repo = new TestRepository(mongoConnector)
+    ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
   }
 
   @TearDown
   def tearDown: Unit = {
     Await.result(repo.removeAll(), 5.seconds)
-    mongoConnector.close()
     mongoConnector.helper.driver.close()
-    await(mongoConnector.helper.driver.system.terminate())
   }
 
   private def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
