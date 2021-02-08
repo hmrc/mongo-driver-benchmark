@@ -1,10 +1,9 @@
-package benchmarks
+package runner
 
 import org.openjdk.jmh.annotations.Mode
 import org.openjdk.jmh.profile.HotspotThreadProfiler
 import org.openjdk.jmh.runner.Runner
-import org.openjdk.jmh.runner.options.WarmupMode.INDI
-import org.openjdk.jmh.runner.options.{CommandLineOptions, OptionsBuilder, TimeValue}
+import org.openjdk.jmh.runner.options.{CommandLineOptions, OptionsBuilder, TimeValue, WarmupMode}
 import profiler.MemoryProfiler
 
 object DefaultRunner extends App {
@@ -16,7 +15,7 @@ object DefaultRunner extends App {
       .threads(-1)
       .measurementTime(TimeValue.seconds(4))
       .warmupTime(TimeValue.seconds(2))
-      .warmupMode(INDI)
+      .warmupMode(WarmupMode.INDI)
       .mode(Mode.Throughput)
       .addProfiler(classOf[MemoryProfiler])
       .addProfiler(classOf[HotspotThreadProfiler])
