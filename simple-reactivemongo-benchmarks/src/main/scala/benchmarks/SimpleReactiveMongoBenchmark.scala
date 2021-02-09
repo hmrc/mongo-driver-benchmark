@@ -114,13 +114,13 @@ class SimpleReactiveMongoBenchmark {
     mongoConnector = MongoConnector(mongoUri)
     repo = new SimpleReactiveMongoRepository(mongoConnector)
     ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
+    await(repo.removeAll())
   }
 
   @TearDown
   def tearDown: Unit = {
-    await(repo.removeAll())
     mongoConnector.helper.driver.close()
   }
 
-  private def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
+  private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }

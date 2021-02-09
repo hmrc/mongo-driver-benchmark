@@ -122,13 +122,13 @@ class HmrcMongoBenchmark {
     mongoComponent = MongoComponent(mongoUri)
     val repository = new HmrcMongoRepository(mongoComponent)
     collection = repository.collection
+    await(collection.deleteMany(filter = BsonDocument()).toFuture())
   }
 
   @TearDown
   def tearDown: Unit = {
-    await(collection.deleteMany(filter = BsonDocument()).toFuture())
     mongoComponent.client.close()
   }
 
-  private def await[T](f: Future[T]): T = Await.result(f, 5.seconds)
+  private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }
