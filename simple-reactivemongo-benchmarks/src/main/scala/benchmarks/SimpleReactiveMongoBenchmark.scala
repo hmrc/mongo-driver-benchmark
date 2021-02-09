@@ -1,8 +1,9 @@
 package benchmarks
 
+import com.typesafe.config.ConfigFactory
 import org.openjdk.jmh.annotations._
 import play.api.libs.json.Json
-import repository.{TestObject, SimpleReactiveMongoRepository}
+import repository.{SimpleReactiveMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoConnector
 
 import java.util.UUID.randomUUID
@@ -15,9 +16,10 @@ class SimpleReactiveMongoBenchmark {
 
   import TestObject.formats
 
-  private var mongoConnector: MongoConnector = _
-  private var repo: SimpleReactiveMongoRepository           = _
-  private implicit var ec: ExecutionContext  = _
+  private var mongoConnector: MongoConnector      = _
+  private var repo: SimpleReactiveMongoRepository = _
+  private implicit var ec: ExecutionContext       = _
+  private lazy val mongoUri                            = ConfigFactory.load().getString("mongo.uri")
 
   @Benchmark
   def insertSingle(): Unit =
@@ -109,7 +111,7 @@ class SimpleReactiveMongoBenchmark {
 
   @Setup
   def setUp: Unit = {
-    mongoConnector = MongoConnector("mongodb://localhost:27017/benchmarks-test")
+    mongoConnector = MongoConnector(mongoUri)
     repo = new SimpleReactiveMongoRepository(mongoConnector)
     ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
   }

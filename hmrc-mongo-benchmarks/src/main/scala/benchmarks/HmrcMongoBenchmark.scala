@@ -1,13 +1,14 @@
 package benchmarks
 
 import com.mongodb.client.model.ReturnDocument
+import com.typesafe.config.ConfigFactory
 import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.FindOneAndUpdateOptions
 import org.mongodb.scala.model.Updates.set
 import org.openjdk.jmh.annotations._
-import repository.{TestObject, HmrcMongoRepository}
+import repository.{HmrcMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoComponent
 
 import java.util.UUID.randomUUID
@@ -21,6 +22,7 @@ class HmrcMongoBenchmark {
   private var mongoComponent: MongoComponent          = _
   private var collection: MongoCollection[TestObject] = _
   private implicit var ec: ExecutionContext           = _
+  private lazy val mongoUri = ConfigFactory.load().getString("mongo.uri")
 
   @Benchmark
   def insertSingle(): Unit =
@@ -117,7 +119,7 @@ class HmrcMongoBenchmark {
   @Setup
   def setUp: Unit = {
     ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
-    mongoComponent = MongoComponent("mongodb://localhost:27017/benchmarks-test")
+    mongoComponent = MongoComponent(mongoUri)
     val repository = new HmrcMongoRepository(mongoComponent)
     collection = repository.collection
   }
