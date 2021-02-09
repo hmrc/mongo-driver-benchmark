@@ -2,7 +2,6 @@ package benchmarks
 
 import com.mongodb.client.model.ReturnDocument
 import com.typesafe.config.ConfigFactory
-import org.mongodb.scala.MongoCollection
 import org.mongodb.scala.bson.BsonDocument
 import org.mongodb.scala.model.Filters.equal
 import org.mongodb.scala.model.FindOneAndUpdateOptions
@@ -12,17 +11,17 @@ import repository.{HmrcMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoComponent
 
 import java.util.UUID.randomUUID
-import java.util.concurrent.Executors
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 @State(Scope.Benchmark)
 class HmrcMongoBenchmark {
 
-  private var mongoComponent: MongoComponent          = _
-  private var collection: MongoCollection[TestObject] = _
-  private implicit var ec: ExecutionContext           = _
-  private lazy val mongoUri = ConfigFactory.load().getString("mongo.uri")
+  private implicit lazy val ec    = ExecutionContext.Implicits.global
+  private lazy val mongoUri       = ConfigFactory.load().getString("mongo.uri")
+  private lazy val mongoComponent = MongoComponent(mongoUri)
+  private lazy val repository     = new HmrcMongoRepository(mongoComponent)
+  private lazy val collection     = repository.collection
 
   @Benchmark
   def insertSingle(): Unit =
@@ -117,18 +116,12 @@ class HmrcMongoBenchmark {
   }
 
   @Setup
-  def setUp: Unit = {
-    ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
-    mongoComponent = MongoComponent(mongoUri)
-    val repository = new HmrcMongoRepository(mongoComponent)
-    collection = repository.collection
+  def setUp: Unit =
     await(collection.deleteMany(filter = BsonDocument()).toFuture())
-  }
 
   @TearDown
-  def tearDown: Unit = {
+  def tearDown: Unit =
     mongoComponent.client.close()
-  }
 
   private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }

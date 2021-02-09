@@ -7,7 +7,6 @@ import repository.{SimpleReactiveMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoConnector
 
 import java.util.UUID.randomUUID
-import java.util.concurrent.Executors
 import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -16,10 +15,10 @@ class SimpleReactiveMongoBenchmark {
 
   import TestObject.formats
 
-  private var mongoConnector: MongoConnector      = _
-  private var repo: SimpleReactiveMongoRepository = _
-  private implicit var ec: ExecutionContext       = _
-  private lazy val mongoUri                            = ConfigFactory.load().getString("mongo.uri")
+  private implicit lazy val ec    = ExecutionContext.Implicits.global
+  private lazy val mongoUri       = ConfigFactory.load().getString("mongo.uri")
+  private lazy val mongoConnector = MongoConnector(mongoUri)
+  private lazy val repo           = new SimpleReactiveMongoRepository(mongoConnector)
 
   @Benchmark
   def insertSingle(): Unit =
@@ -110,17 +109,12 @@ class SimpleReactiveMongoBenchmark {
   }
 
   @Setup
-  def setUp: Unit = {
-    mongoConnector = MongoConnector(mongoUri)
-    repo = new SimpleReactiveMongoRepository(mongoConnector)
-    ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
+  def setUp: Unit =
     await(repo.removeAll())
-  }
 
   @TearDown
-  def tearDown: Unit = {
+  def tearDown: Unit =
     mongoConnector.helper.driver.close()
-  }
 
   private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }
