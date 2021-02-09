@@ -19,3 +19,15 @@ lazy val simpleReactiveMongoBenchmarks = (project in file("simple-reactivemongo-
   )
   .dependsOn(common)
   .enablePlugins(JmhPlugin)
+
+lazy val hmrcMongoBenchmarks = (project in file("hmrc-mongo-benchmarks"))
+  .settings(
+    scalaVersion := "2.12.8",
+    resolvers += Resolver.bintrayRepo("hmrc", "releases"),
+    libraryDependencies ++= Seq(
+      hmrcMongo
+    ),
+    mainClass in (Jmh, run) := Some("runner.DefaultRunner")
+  )
+  .dependsOn(common)
+  .enablePlugins(JmhPlugin)

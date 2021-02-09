@@ -2,7 +2,7 @@ package benchmarks
 
 import org.openjdk.jmh.annotations._
 import play.api.libs.json.Json
-import repository.{TestObject, TestRepository}
+import repository.{TestObject, SimpleReactiveMongoRepository}
 import uk.gov.hmrc.mongo.MongoConnector
 
 import java.util.UUID.randomUUID
@@ -16,7 +16,7 @@ class SimpleReactiveMongoBenchmark {
   import TestObject.formats
 
   private var mongoConnector: MongoConnector = _
-  private var repo: TestRepository           = _
+  private var repo: SimpleReactiveMongoRepository           = _
   private implicit var ec: ExecutionContext  = _
 
   @Benchmark
@@ -64,12 +64,13 @@ class SimpleReactiveMongoBenchmark {
     val testObject = TestObject()
     await(for {
       _ <- repo.insert(testObject)
+      newString = randomUUID().toString
       result <- repo.findAndUpdate(
                   query = Json.obj("aString" -> testObject.aString),
-                  update = Json.obj("$set" -> Json.obj("anOption" -> "a new string")),
+                  update = Json.obj("$set" -> Json.obj("anOption" -> newString)),
                   fetchNewObject = true
                 )
-    } yield assert(result.result.flatMap(_.anOption).contains("a new string")))
+    } yield assert(result.result.flatMap(_.anOption).contains(newString)))
   }
 
   @Benchmark
@@ -109,13 +110,13 @@ class SimpleReactiveMongoBenchmark {
   @Setup
   def setUp: Unit = {
     mongoConnector = MongoConnector("mongodb://localhost:27017/benchmarks-test")
-    repo = new TestRepository(mongoConnector)
+    repo = new SimpleReactiveMongoRepository(mongoConnector)
     ec = ExecutionContext.fromExecutor(Executors.newWorkStealingPool())
   }
 
   @TearDown
   def tearDown: Unit = {
-    Await.result(repo.removeAll(), 5.seconds)
+    await(repo.removeAll())
     mongoConnector.helper.driver.close()
   }
 

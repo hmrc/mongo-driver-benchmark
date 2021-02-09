@@ -19,8 +19,8 @@ case class TestObject(
   aNone: Option[String] = None,
   optionalCollection: Option[List[Primitives]] = Some(List(Primitives(), Primitives(), Primitives())),
   nestedMapOfCollections: Map[String, List[Map[String, Seq[Primitives]]]] = Map(
-    "key1" -> List(Map("key1.keya" -> List(Primitives()), "key1.keyb" -> List(Primitives(), Primitives()))),
-    "key2" -> List(Map("key2.keya" -> List(Primitives(), Primitives()), "key2.keyb" -> List(Primitives())))
+    "key1" -> List(Map("key1-keya" -> List(Primitives()), "key1-keyb" -> List(Primitives(), Primitives()))),
+    "key2" -> List(Map("key2-keya" -> List(Primitives(), Primitives()), "key2-keyb" -> List(Primitives())))
   ),
   modifiedDetails: CreationAndLastModifiedDetail = CreationAndLastModifiedDetail(),
   anInstant: Instant = Instant.now(),
@@ -40,7 +40,7 @@ object TestObject {
   }
 }
 
-class TestRepository(mongoConnector: MongoConnector)
+class SimpleReactiveMongoRepository(mongoConnector: MongoConnector)
     extends ReactiveRepository[TestObject, BSONObjectID](
       "simpleReactiveMongo",
       mongoConnector.db,
