@@ -1,7 +1,7 @@
 import Dependencies._
 
 lazy val root = (project in file("."))
-  .aggregate(simpleReactiveMongoBenchmarks)
+  .aggregate(simpleReactiveMongoBenchmarks, hmrcMongoBenchmarks)
 
 lazy val common = (project in file("common"))
   .settings(
