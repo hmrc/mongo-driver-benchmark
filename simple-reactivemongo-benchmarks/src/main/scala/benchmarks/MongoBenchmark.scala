@@ -12,7 +12,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 @State(Scope.Benchmark)
-class SimpleReactiveMongoBenchmark {
+class MongoBenchmark {
 
   import TestObject.formats
 
@@ -97,5 +97,5 @@ class SimpleReactiveMongoBenchmark {
   private def assertF[T](f: Future[T])(predicate: T => Boolean) =
     assert(predicate(await(f)))
 
-  private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
+  private def await[T](f: Future[T]): T = Await.result(f, 30.seconds)
 }

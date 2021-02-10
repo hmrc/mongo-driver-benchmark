@@ -15,7 +15,7 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, ExecutionContext, Future}
 
 @State(Scope.Benchmark)
-class HmrcMongoBenchmark {
+class MongoBenchmark {
 
   private implicit lazy val ec    = ExecutionContext.Implicits.global
   private lazy val mongoUri       = ConfigFactory.load().getString("mongo.uri")
@@ -106,5 +106,5 @@ class HmrcMongoBenchmark {
   private def assertF[T](f: Future[T])(predicate: T => Boolean) =
     assert(predicate(await(f)))
 
-  private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
+  private def await[T](f: Future[T]): T = Await.result(f, 30.seconds)
 }
