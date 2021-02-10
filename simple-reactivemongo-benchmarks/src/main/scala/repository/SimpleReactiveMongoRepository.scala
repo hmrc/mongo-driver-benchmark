@@ -13,6 +13,10 @@ import java.util.UUID.randomUUID
 
 case class Primitives(string: String = "a string", int: Int = 100, long: Long = 100L, boolean: Boolean = true)
 
+object Primitives{
+  implicit val formats = Json.format[Primitives]
+}
+
 case class TestObject(
   aString: String = randomUUID().toString,
   anOption: Option[String] = Some("an option"),
@@ -24,7 +28,7 @@ case class TestObject(
   ),
   modifiedDetails: CreationAndLastModifiedDetail = CreationAndLastModifiedDetail(),
   anInstant: Instant = Instant.now(),
-  jsValue: Option[JsValue] = None,
+  jsValue: Option[JsValue] = Some(Json.toJson(Primitives())),
   location: (Double, Double) = (10, 20),
   id: BSONObjectID = BSONObjectID.generate
 )

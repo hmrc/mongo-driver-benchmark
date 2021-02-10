@@ -2,10 +2,10 @@ package benchmarks
 
 import com.mongodb.client.model.ReturnDocument
 import com.typesafe.config.ConfigFactory
-import org.mongodb.scala.bson.BsonDocument
-import org.mongodb.scala.model.Filters.equal
-import org.mongodb.scala.model.FindOneAndUpdateOptions
+import org.mongodb.scala.bson.{BsonDocument, ObjectId}
+import org.mongodb.scala.model.Filters.{equal, notEqual}
 import org.mongodb.scala.model.Updates.set
+import org.mongodb.scala.model.{FindOneAndUpdateOptions, InsertOneModel}
 import org.openjdk.jmh.annotations._
 import repository.{HmrcMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoComponent
@@ -23,105 +23,88 @@ class HmrcMongoBenchmark {
   private lazy val repository     = new HmrcMongoRepository(mongoComponent)
   private lazy val collection     = repository.collection
 
+  private val knownString   = randomUUID().toString
+  private val knownObjectId = new ObjectId()
+
   @Benchmark
   def insertSingle(): Unit =
-    assert(await(collection.insertOne(TestObject()).toFuture()).wasAcknowledged())
+    assertF(collection.insertOne(TestObject()).toFuture())(_.wasAcknowledged())
 
   @Benchmark
   def insertBulk(): Unit =
-    assert(await(collection.insertMany(Seq(TestObject(), TestObject(), TestObject())).toFuture()).wasAcknowledged())
+    assertF(collection.bulkWrite((1 to 10).map(_ => InsertOneModel(TestObject()))).toFuture())(_.wasAcknowledged())
 
   @Benchmark
-  def find(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- collection.insertOne(testObject).toFuture()
-      result <- collection.find(filter = equal("aString", testObject.aString)).toFuture()
-    } yield assert(result.size == 1))
-  }
+  def find(): Unit =
+    assertF(collection.find(filter = equal("aString", knownString)).toFuture())(_.size == 1)
 
   @Benchmark
-  def findById(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- collection.insertOne(testObject).toFuture()
-      result <- collection.find(equal("_id", testObject.id)).toFuture()
-    } yield assert(result.nonEmpty))
-  }
+  def findById(): Unit =
+    assertF(collection.find(equal("_id", knownObjectId)).toFuture())(_.nonEmpty)
 
   @Benchmark
-  def findAndUpdateIndexedField(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _ <- collection.insertOne(testObject).toFuture()
-      newString = randomUUID().toString
-      result <- collection
-                  .findOneAndUpdate(
-                    filter = equal("aString", testObject.aString),
-                    update = set("aString", newString),
-                    options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
-                  )
-                  .toFutureOption()
-    } yield assert(result.exists(_.aString == newString)))
-  }
+  def findAndUpdateIndexedField(): Unit =
+    assertF(
+      collection
+        .findOneAndUpdate(
+          filter = equal("aString", knownString),
+          update = set("aString", knownString),
+          options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .toFutureOption()
+    )(_.exists(_.aString == knownString))
 
   @Benchmark
   def findAndUpdateNonIndexedField(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _ <- collection.insertOne(testObject).toFuture()
-      newString = randomUUID().toString
-      result <- collection
-                  .findOneAndUpdate(
-                    filter = equal("aString", testObject.aString),
-                    update = set("anOption", newString),
-                    options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
-                  )
-                  .toFutureOption()
-    } yield assert(result.flatMap(_.anOption).contains(newString)))
+    val newString = randomUUID().toString
+    assertF(
+      collection
+        .findOneAndUpdate(
+          filter = equal("aString", knownString),
+          update = set("anOption", newString),
+          options = FindOneAndUpdateOptions().returnDocument(ReturnDocument.AFTER)
+        )
+        .toFutureOption()
+    )(_.flatMap(_.anOption).contains(newString))
   }
 
   @Benchmark
   def count(): Unit =
-    await(for {
-      _      <- collection.insertOne(TestObject()).toFuture()
-      result <- collection.countDocuments().toFuture()
-    } yield assert(result > 0))
+    assertF(collection.countDocuments().toFuture())(_ > 0)
 
   @Benchmark
-  def countByQuery(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- collection.insertOne(testObject).toFuture()
-      result <- collection.countDocuments(filter = equal("aString", testObject.aString)).toFuture()
-    } yield assert(result > 0))
-  }
+  def countByQuery(): Unit =
+    assertF(collection.countDocuments(filter = equal("aString", knownString)).toFuture())(_ > 0)
 
   @Benchmark
-  def remove(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- collection.insertOne(testObject).toFuture()
-      result <- collection.deleteOne(filter = equal("aString", testObject.aString)).toFuture()
-    } yield assert(result.wasAcknowledged()))
-  }
+  def remove(): Unit =
+    assertF(collection.deleteOne(filter = notEqual("aString", knownString)).toFuture())(_.wasAcknowledged())
 
   @Benchmark
-  def removeById(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- collection.insertOne(testObject).toFuture()
-      result <- collection.deleteOne(equal("_id", testObject.id)).toFuture()
-    } yield assert(result.wasAcknowledged()))
-  }
+  def removeById(): Unit =
+    assertF(collection.deleteOne(notEqual("_id", knownObjectId)).toFuture())(_.wasAcknowledged())
 
   @Setup
-  def setUp: Unit =
-    await(collection.deleteMany(filter = BsonDocument()).toFuture())
+  def setup: Unit =
+    await(for {
+      _ <- collection.deleteMany(filter = BsonDocument()).toFuture()
+      _ <- collection
+             .bulkWrite(
+               (1 to 1000).map(_ => InsertOneModel(TestObject())) ++ Seq(
+                 InsertOneModel(TestObject(aString = knownString)),
+                 InsertOneModel(TestObject(id = knownObjectId))
+               )
+             )
+             .toFuture()
+
+    } yield ())
 
   @TearDown
   def tearDown: Unit =
     mongoComponent.client.close()
+
+  private def assertF[T](f: Future[T])(predicate: T => Boolean) =
+    assert(predicate(await(f)))
 
   private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }

@@ -1,0 +1,1 @@
+sleep 5 && /usr/bin/mongo "mongodb://mongo0:27017/benchmarks-test" $*

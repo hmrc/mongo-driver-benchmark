@@ -3,6 +3,7 @@ package benchmarks
 import com.typesafe.config.ConfigFactory
 import org.openjdk.jmh.annotations._
 import play.api.libs.json.Json
+import reactivemongo.bson.BSONObjectID
 import repository.{SimpleReactiveMongoRepository, TestObject}
 import uk.gov.hmrc.mongo.MongoConnector
 
@@ -20,101 +21,81 @@ class SimpleReactiveMongoBenchmark {
   private lazy val mongoConnector = MongoConnector(mongoUri)
   private lazy val repo           = new SimpleReactiveMongoRepository(mongoConnector)
 
+  private val knownString   = randomUUID().toString
+  private val knownObjectId = BSONObjectID.generate()
+
   @Benchmark
   def insertSingle(): Unit =
-    assert(await(repo.insert(TestObject())).ok)
+    assertF(repo.insert(TestObject()))(_.ok)
 
   @Benchmark
   def insertBulk(): Unit =
-    assert(await(repo.bulkInsert(Seq(TestObject(), TestObject(), TestObject()))).ok)
+    assertF(repo.bulkInsert(Seq(TestObject(), TestObject(), TestObject())))(_.ok)
 
   @Benchmark
-  def find(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- repo.insert(testObject)
-      result <- repo.find("aString" -> testObject.aString)
-    } yield assert(result.size == 1))
-  }
+  def find(): Unit =
+    assertF(repo.find("aString" -> knownString))(_.size == 1)
 
   @Benchmark
-  def findById(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- repo.insert(testObject)
-      result <- repo.findById(testObject.id)
-    } yield assert(result.isDefined))
-  }
+  def findById(): Unit =
+    assertF(repo.findById(knownObjectId))(_.isDefined)
 
   @Benchmark
-  def findAndUpdateIndexedField(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _ <- repo.insert(testObject)
-      newString = randomUUID().toString
-      result <- repo.findAndUpdate(
-                  query = Json.obj("aString" -> testObject.aString),
-                  update = Json.obj("$set" -> Json.obj("aString" -> newString)),
-                  fetchNewObject = true
-                )
-    } yield assert(result.result.exists(_.aString == newString)))
-  }
+  def findAndUpdateIndexedField(): Unit =
+    assertF(
+      repo.findAndUpdate(
+        query = Json.obj("aString" -> knownString),
+        update = Json.obj("$set" -> Json.obj("aString" -> knownString)),
+        fetchNewObject = true
+      )
+    )(_.result.exists(_.aString == knownString))
 
   @Benchmark
   def findAndUpdateNonIndexedField(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _ <- repo.insert(testObject)
-      newString = randomUUID().toString
-      result <- repo.findAndUpdate(
-                  query = Json.obj("aString" -> testObject.aString),
-                  update = Json.obj("$set" -> Json.obj("anOption" -> newString)),
-                  fetchNewObject = true
-                )
-    } yield assert(result.result.flatMap(_.anOption).contains(newString)))
+    val newString = randomUUID().toString
+    assertF(
+      repo.findAndUpdate(
+        query = Json.obj("aString" -> knownString),
+        update = Json.obj("$set" -> Json.obj("anOption" -> newString)),
+        fetchNewObject = true
+      )
+    )(_.result.flatMap(_.anOption).contains(newString))
   }
 
   @Benchmark
   def count(): Unit =
-    await(for {
-      _      <- repo.insert(TestObject())
-      result <- repo.count
-    } yield assert(result > 0))
+    assertF(repo.count)(_ > 0)
 
   @Benchmark
-  def countByQuery(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- repo.insert(testObject)
-      result <- repo.count(Json.obj("aString" -> testObject.aString))
-    } yield assert(result > 0))
-  }
+  def countByQuery(): Unit =
+    assertF(repo.count(Json.obj("aString" -> knownString)))(_ > 0)
 
   @Benchmark
-  def remove(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- repo.insert(testObject)
-      result <- repo.remove("aString" -> testObject.aString)
-    } yield assert(result.ok))
-  }
+  def remove(): Unit =
+    assertF(repo.remove("aString" -> knownString))(_.ok)
 
   @Benchmark
-  def removeById(): Unit = {
-    val testObject = TestObject()
-    await(for {
-      _      <- repo.insert(testObject)
-      result <- repo.removeById(testObject.id)
-    } yield assert(result.ok))
-  }
+  def removeById(): Unit =
+    assertF(repo.removeById(knownObjectId))(_.ok)
 
   @Setup
   def setUp: Unit =
-    await(repo.removeAll())
+    await(for {
+      _ <- repo.removeAll()
+      _ <- repo.bulkInsert(
+             (1 to 1000).map(_ => TestObject()) ++ Seq(
+               TestObject(aString = knownString),
+               TestObject(id = knownObjectId)
+             )
+           )
+    } yield ())
 
   @TearDown
   def tearDown: Unit =
     mongoConnector.helper.driver.close()
+
+  private def assertF[T](f: Future[T])(predicate: T => Boolean) =
+    assert(predicate(await(f)))
 
   private def await[T](f: Future[T]): T = Await.result(f, 10.seconds)
 }
